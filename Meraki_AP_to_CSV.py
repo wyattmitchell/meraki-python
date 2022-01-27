@@ -72,7 +72,7 @@ for org in organizations:
     csvname = str(orgName + '_AP_BSSID.csv')
     csvname = csvname.replace("\"", "")
     with open(csvname, 'w', encoding='utf-8', newline='') as f:
-        csvheader = ['Network', 'AP', 'LLDP_Name', 'LLDP_Port', 'SSID_Name', 'SSID_Band', 'SSID_Channel', 'SSID_ChannelWidth']
+        csvheader = ['Network', 'AP', 'LLDP_Name', 'LLDP_Port', 'SSID_Name', 'SSID_Band', 'SSID_Channel', 'SSID_ChannelWidth', 'BSSID']
         writer = csv.writer(f)
         writer.writerow(csvheader)
         for i in devices_aps:
@@ -81,6 +81,6 @@ for org in organizations:
             lldp_info = getLldp(i['serial'])
             bssid_info = getBssid(i['serial'])
             for item in bssid_info:
-                data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], item['ssidName'], item['band'], item['channel'], item['channelWidth']]
+                data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
                 writer.writerow(data)
     
