@@ -1,13 +1,24 @@
 import meraki
 import json
 
+# IMPORTANT: Devices will not reboot until the last line is uncommented.
+# Modify variables below and do a test run to see what will be rebooted and what will be skipped.
+# Uncomment last line to enable the rebootDevice API call.
+
+# Change APIKEY below to your Meraki Dashboard API key.
 dashboard = meraki.DashboardAPI('APIKEY')
 
-def printj(ugly_json_object):
+# Define type of device you want to reboot.
+# Partial matches allowed. 'MR' will capture all AP models. 'MR4' will match MR44, MR46, etc.
+devicetype = 'MR'
 
-    # The json.dumps() method converts a JSON object into human-friendly formatted text
-    pretty_json_string = json.dumps(ugly_json_object, indent = 2, sort_keys = False)
-    return print(pretty_json_string)
+# Add any specific device names or serials you do NOT want to reboot.
+ignorelist = [
+    'IGNORE_MY_NAME',
+    'IGNORE_MY_SERIAL',
+    'MYAP',
+    'ETC'
+]
 
 # Gather all organizations
 organizations = dashboard.organizations.getOrganizations()
@@ -22,18 +33,22 @@ for org in organizations:
     print('')
     print(f'The OrganizationId is {orgId}, and its name is {orgName}.')
 
-    # Get all MR S/N's
+    # Get all devices in Org
     devices = dashboard.organizations.getOrganizationDevices(organizationId=orgId)
 
-    # Get all MR's
-    devices_aps = [i for i in devices if 'MR' in i['model']]
+    # Get all device types specified in devicetype variable
+    devices_selected = [i for i in devices if devicetype in i['model']]
 
-    ## Print all AP detail
-    # print('These are the APs:')
-    # printj(devices_aps)
-
-    # Write CSV per organization with row per active SSID & Band for every AP
-    for i in devices_aps:
+    # Reboot all devices, ignoring any name or serial in ignorelist variable
+    for i in devices_selected:
         print('')
+        if i['name'] in ignorelist:
+            print("Name is ignored.")
+            print("Skipping " + i["name"] + " " + i['model'] + " " + i['serial'])
+            continue
+        if i['serial'] in ignorelist:
+            print("Serial is ignored.")
+            print("Skipping " + i["name"] + " " + i['model'] + " " + i['serial'])
+            continue
         print("Rebooting " + i["name"] + " " + i['model'] + " " + i['serial'])
-        dashboard.devices.rebootDevice(serial=i['serial'])
+        # dashboard.devices.rebootDevice(serial=i['serial'])
