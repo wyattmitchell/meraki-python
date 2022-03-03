@@ -23,10 +23,6 @@ ignorelist = [
 # Gather all organizations
 organizations = dashboard.organizations.getOrganizations()
 
-## Print complete org list
-# print('Organizations:')
-# printj(organizations)
-
 for org in organizations:
     orgId = org['id']
     orgName = org['name']
