@@ -1,5 +1,17 @@
+""" Copyright (c) 2022 Cisco and/or its affiliates.
+This software is licensed to you under the terms of the Cisco Sample
+Code License, Version 1.1 (the "License"). You may obtain a copy of the
+License at
+           https://developer.cisco.com/docs/licenses
+All use of the material herein must be in accordance with the terms of
+the License. All rights not expressly granted by the License are
+reserved. Unless required by applicable law or agreed to separately in
+writing, software distributed under the License is distributed on an "AS
+IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+or implied. 
+"""
+
 import meraki
-import json
 import csv
 
 # Instructions:
@@ -13,6 +25,52 @@ import csv
 #
 # IMPORTANT: Devices will not reboot until the last line is uncommented.
 
+def select_org(dashboard):
+    # Fetch and select the organization
+    print('\n\nFetching organizations...\n')
+    organizations = dashboard.organizations.getOrganizations()
+    organizations.sort(key=lambda x: x['name'])
+    counter = 0
+    print('Select organization:')
+    for organization in organizations:
+        orgName = organization['name']
+        print(f'{counter} - {orgName}')
+        counter+=1
+    isDone = False
+    while isDone == False:
+        selected = input('\nSelect the organization ID you would like to query: ')
+        try:
+            if int(selected) in range(0,counter):
+                isDone = True
+            else:
+                print('\tInvalid Organization Number\n')
+        except:
+            print('\tInvalid Organization Number\n')
+    return(organizations[int(selected)]['id'], organizations[int(selected)]['name'])
+
+def select_net(dashboard, orgId):
+    # Fetch and select the network
+    print('\n\nFetching networks...\n')
+    networks = dashboard.organizations.getOrganizationNetworks(orgId)
+    networks.sort(key=lambda x: x['name'])
+    counter = 0
+    print('Select organization:')
+    for net in networks:
+        netName = net['name']
+        print(f'{counter} - {netName}')
+        counter+=1
+    isDone = False
+    while isDone == False:
+        selected = input('\nSelect the network ID you would like to query: ')
+        try:
+            if int(selected) in range(0,counter):
+                isDone = True
+            else:
+                print('\tInvalid Network Number\n')
+        except:
+            print('\tInvalid Network Number\n')
+    return(networks[int(selected)]['id'], networks[int(selected)]['name'])
+
 dashboard = meraki.DashboardAPI(suppress_logging=True)
 
 # Read ignorelist.csv for device names or serials to skip.
@@ -20,82 +78,37 @@ ignorelist = []
 try:
     with open('ignorelist.csv', 'r') as file:
         ignorelist = [row[0] for row in csv.reader(file)]
-    print('')
-    print('ignorelist.csv found and imported.')
-    print('')
+    print('\nignorelist.csv found and imported.\n')
 except:
-    print('')
-    print('ignorelist.csv could not be found or read. Continuing...')
-    print('')
+    print('\nignorelist.csv could not be found or read. Continuing...\n')
 
-# Gather all organizations
-organizations = dashboard.organizations.getOrganizations()
-
-print('')
-print('Listing all organizations:')
-
-for org in organizations:
-    orgId = org['id']
-    orgName = org['name']
-    print(f'The OrganizationId is {orgId}, and its name is {orgName}.')
-
-print('Enter selected OrganizationId: ')
-selected_org = input()
-
-# Get networks in selected org
-try:
-    networks = dashboard.organizations.getOrganizationNetworks(organizationId=selected_org)
-except:
-    print('')
-    print('Selected org does not exist for the provided APIKEY.')
-    exit()
-
-print('')
-print('Listing all networks in selected Organization:')
-
-for net in networks:
-    netId = net['id']
-    netName = net['name']
-    print(f'The NetworkId is {netId}, and its name is {netName}.')
-
-print('')
-print('Enter selected NetworkId: ')
-selected_net = input()
+# Select org and network
+orgId, orgName = select_org(dashboard)
+netId, netName = select_net(dashboard, orgId)
 
 # Get all devices in Net
-try:
-    devices = dashboard.networks.getNetworkDevices(networkId=selected_net)
-except:
-    print('')
-    print('Selected network does not exist for the provided APIKEY.')
-    exit()
+devices = dashboard.networks.getNetworkDevices(networkId=netId)
 
 # Define type of device you want to reboot.
 # Partial matches allowed. 'MR' will capture all AP models. 'MR4' will match MR44, MR46, etc.
-print('')
-print('Enter device type to reboot. ')
+print('\nEnter device type to reboot. ')
 print('Partial matches allowed. "MR" will capture all AP models. "MR4" will match MR44, MR46, etc.')
-print('Enter device type: ')
-devicetype = input()
+devicetype = input('Enter device type: ')
 
 # Get all device types specified in devicetype variable
 devices_selected = [i for i in devices if devicetype in i['model']]
 
-print('')
-print(f'Listing all devices matching "{devicetype}" in selected network:')
+print(f'\nListing all devices matching "{devicetype}" in selected network:')
 
 for dev in devices_selected:
     devName = dev['name']
     print(f'{devName}')
 
-print('')
-print('Continue? (Y/N): ')
-reboot = input()
+reboot = input('\nContinue? (Y/N): ')
 
 if reboot == 'Y' or 'y':
     # Reboot all devices, ignoring any name or serial in ignorelist variable
     for i in devices_selected:
-        print('')
         if i['name'] in ignorelist:
             print("Skipping " + i["name"] + " " + i['model'] + " " + i['serial'] + ". Name is in ignorelist.")
             continue
