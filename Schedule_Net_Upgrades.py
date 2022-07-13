@@ -13,6 +13,7 @@ or implied.
 
 import meraki
 import csv
+import datetime
 
 # Instructions:
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
@@ -43,6 +44,8 @@ def select_org(dashboard):
 
 # ---- Begin Script ----
 
+consoleDebug = False
+
 # Connect to dashboard, select org
 dashboard = meraki.DashboardAPI(suppress_logging=True)
 selected_org, orgName = select_org(dashboard)
@@ -61,28 +64,28 @@ with open(in_path, 'r') as infile:
     except:
         print(f'\nCould not open or read {in_path}. Exiting script.\n')
 
-    for row in rows:
-        print(row)
-        network_id = row[0]
-        product = row[2]
-        firmwareId = row[3]
-        datetime = row[4]
-        zone = row[5]
-        devices = {
-                product: {
-                    "nextUpgrade": {
-                        "toVersion": {
-                            "id": firmwareId,
-                            "time": datetime
-                        }
-                    }
-                }
+for row in rows:
+    if consoleDebug == True: print(row)
+    netId, netName, product, firmwareId, upgTime = row
+    products = {
+        product: {
+            "nextUpgrade": {
+                "toVersion": {
+                    "id": firmwareId,
+                },
+                "time": upgTime
             }
-        print(devices)
-        try:
-            response = dashboard.networks.updateNetworkFirmwareUpgrades(network_id, products=devices)
-        except Exception as error:
-            with open('logs/' + 'schedule_errors.txt', 'w') as outfile:
-                outfile.write(str(error))
-                outfile.write('\n\n')
-            print('Errors encountered. See error log.')
+        }
+    }
+    if consoleDebug == True: print(products)
+    try:
+        response = dashboard.networks.updateNetworkFirmwareUpgrades(netId, products=products)
+        with open('logs/schedule_log.txt', 'a') as logfile:
+            logfile.write(f'{datetime.datetime.now()} - {netName} has been scheduled for upgrade. {product} to firmware ID: {firmwareId} at {upgTime}.\n')
+        print(f'{netName} has been scheduled for upgrade.')
+    except Exception as error:
+        with open('logs/' + 'schedule_errors.txt', 'a') as outfile:
+            outfile.write(f'{datetime.datetime.now()} - {netName} scheduling error.\n')
+            outfile.write(str(error))
+            outfile.write('\n\n')
+        print('Errors encountered. See error log.')
