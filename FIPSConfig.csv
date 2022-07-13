@@ -1,0 +1,3 @@
+NetworkID,Name,FIPSEnabled
+netId1,netName1,true
+netId2,netName2,false
