@@ -44,6 +44,8 @@ def select_org(dashboard):
 
 # ---- Begin Script ----
 
+consoleDebug = False
+
 # Connect to dashboard, select org
 dashboard = meraki.DashboardAPI(suppress_logging=True)
 selected_org, orgName = select_org(dashboard)
@@ -64,12 +66,9 @@ with open(in_path, 'r') as infile:
 
 with open('logs/fips_log.txt', 'a') as logfile:
     for row in rows:
-        # print(row)
-        network_id = row[0]
-        netName = row[1]
-        fipsEnabled = row[2]
+        if consoleDebug == True: print(row)
+        network_id, netName, fipsEnabled = row
         try:
-            netSettings = dashboard.networks.getNetworkSettings(network_id)
             fipsSet = {'enabled': fipsEnabled}
             response = dashboard.networks.updateNetworkSettings(networkId=network_id, fips=fipsSet)
             logfile.write(f'\n{datetime.datetime.now()} - {netName} set FIPS Mode to {fipsEnabled}.')
@@ -79,6 +78,5 @@ with open('logs/fips_log.txt', 'a') as logfile:
                 outfile.write(f'\n{datetime.datetime.now()} - Could not write {network_id} FIPS setting.\n')
                 outfile.write(str(error))
                 outfile.write('\n')
-            print('Errors encountered. See error log.')
-        
+            print('Errors encountered. See error log.')      
         
