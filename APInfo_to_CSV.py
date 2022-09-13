@@ -23,7 +23,7 @@ import csv
 # Set verbose_console to True for more console logging.
 
 # Variables:
-verbose_console = True
+verbose_console = False
 
 dashboard = meraki.DashboardAPI(suppress_logging=not verbose_console)
 
