@@ -55,8 +55,13 @@ def getBssid(serial):
 
 def getLldp(serial):
 
-    # Get LLDP/CDP info
-    device_lldps_info = dashboard.devices.getDeviceLldpCdp(serial)
+    device_lldps_info = {}
+
+    try:    
+        # Get LLDP/CDP info
+        device_lldps_info = dashboard.devices.getDeviceLldpCdp(serial)
+    except:
+        pass
 
     if verbose_console == True:
         ## Print LLDP/CDP info
@@ -66,9 +71,21 @@ def getLldp(serial):
     # Check if info is empty (LLDP/CDP disabled upstream) and return NA
     if device_lldps_info == {}:
         # print("Nothing for AP serial: " + serial)
-        return {'systemName': 'NA','portId': 'NA'}
-        
-    return device_lldps_info['ports']['wired0']['lldp']
+        return {'systemName': 'NA','portId': 'NA', 'deviceId': 'NA', 'cdpPort': 'NA'}
+
+    deviceId = ""
+    systemName = ""
+    portId = ""
+    cdpPort = ""
+    
+    deviceId = device_lldps_info['ports']['wired0']['cdp']['deviceId']
+    systemName = device_lldps_info['ports']['wired0']['lldp']['systemName']
+    portId = device_lldps_info['ports']['wired0']['lldp']['portId']
+    cdpPort = device_lldps_info['ports']['wired0']['cdp']['portId']
+
+    return_data = {'systemName': systemName,'portId': portId, 'deviceId': deviceId, 'cdpPort': cdpPort}
+
+    return return_data
 
 # Gather all organizations
 organizations = dashboard.organizations.getOrganizations()
@@ -86,7 +103,6 @@ for org in organizations:
 
     # Get all MR S/N's
     devices = dashboard.organizations.getOrganizationDevices(organizationId=orgId)
-    devices_statuses = dashboard.organizations.getOrganizationDevicesStatuses(organizationId=orgId)
 
     # Get all MR's
     devices_aps = [i for i in devices if 'MR' in i['model']]
@@ -101,7 +117,7 @@ for org in organizations:
     csvname = csvname.replace("\"", "")
     print(f'Writing CSV file {csvname}')
     with open(csvname, 'w', encoding='utf-8', newline='') as f:
-        csvheader = ['Network', 'AP', 'LLDP_Name', 'LLDP_Port', 'SSID_Name', 'SSID_Band', 'SSID_Channel', 'SSID_ChannelWidth', 'BSSID']
+        csvheader = ['Network', 'AP', 'LLDP_Name', 'LLDP_Port', 'CDP_Device', 'CDP_Port', 'SSID_Name', 'SSID_Band', 'SSID_Channel', 'SSID_ChannelWidth', 'BSSID']
         writer = csv.writer(f)
         writer.writerow(csvheader)
         for i in devices_aps:
@@ -109,7 +125,7 @@ for org in organizations:
             lldp_info = getLldp(i['serial'])
             bssid_info = getBssid(i['serial'])
             for item in bssid_info:
-                data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
+                data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], lldp_info['deviceId'], lldp_info['cdpPort'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
                 writer.writerow(data)
     print(f'{csvname} complete. Continuing...')
 print('Script finished.')
