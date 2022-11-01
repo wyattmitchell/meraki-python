@@ -16,15 +16,14 @@ import datetime
 import json
 
 # Instructions:
-# This script will discover all switches in a source network and migrated them to a destination network via the following process.
-# Get network stacks, for each stack get config for each stack member, get L3 intefaces for stack, unclaim switch, claim switch, pause 30, create stack, create port configs, create l3 intefaces.
-# Same for individual switches in network.
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
 # Input CSV must have columns as: XXXXX_____NEED TO UPDATE_____XXXXX
 
 # ToDo:
-# Add STP config migration (preserve STP priority for switches / stacks).
-# Add powerExceptions (getnetworkswitchsettings)
+# Maybe STP config migration (preserve STP priority for switches / stacks).
+# Maybe powerExceptions (getnetworkswitchsettings)
+# Finalize additional port configs that can move over. 
+# For those that rely on network wide settings like access policies maybe tag interfaces with policy name for easy manual config after migration?
 
 # ---- Begin Script ----
 
