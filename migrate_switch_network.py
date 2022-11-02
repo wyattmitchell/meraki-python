@@ -17,7 +17,6 @@ import json
 
 # Instructions:
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
-# Input CSV must have columns as: XXXXX_____NEED TO UPDATE_____XXXXX
 
 # ToDo:
 # Maybe STP config migration (preserve STP priority for switches / stacks).
@@ -53,10 +52,19 @@ def select_org(dashboard):
 def select_net(dashboard, orgId):
     # Fetch and select the network
     networks = dashboard.organizations.getOrganizationNetworks(orgId)
-    networks.sort(key=lambda x: x['name'])
+
+    # Prompt search for network name to filter for shorter list.
+    search_name = input('Enter search string: ')
+    netList = []
+    # Filter only MS devices
+    for net in networks:
+        if search_name in net["name"]:
+            netList.append(net)
+    
+    netList.sort(key=lambda x: x['name'])
     counter = 0
     print('Networks:')
-    for net in networks:
+    for net in netList:
         netName = net['name']
         print(f'{counter} - {netName}')
         counter+=1
@@ -150,10 +158,10 @@ def migrate_switch(dashboard, swSerial):
                 pVoice = None
             try: 
                 if pType == "access":
-                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, voiceVlan=pVoice, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags)
+                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, voiceVlan=pVoice, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
                     print(f'\nPort {pID} configured as {pType} with data vlan {pVlan} and voice vlan {pVoice}.')
                 elif pType == "trunk":
-                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, allowedVlans=pAllowed, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags)
+                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, allowedVlans=pAllowed, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
                     print(f'\nPort {pID} configured as {pType} with native vlan {pVlan} and allowed vlans {pVoice}.')
             except Exception as error:
                 print(str(error))
