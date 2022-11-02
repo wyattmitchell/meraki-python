@@ -55,11 +55,15 @@ def select_net(dashboard, orgId):
 
     # Prompt search for network name to filter for shorter list.
     search_name = input('Enter search string: ')
+
     netList = []
-    # Filter only MS devices
-    for net in networks:
-        if search_name in net["name"]:
-            netList.append(net)
+    if search_name == '':
+        netList = networks
+    else:
+        # Filter only MS devices
+        for net in networks:
+            if search_name in net["name"]:
+                netList.append(net)
     
     netList.sort(key=lambda x: x['name'])
     counter = 0
@@ -78,13 +82,14 @@ def select_net(dashboard, orgId):
                 print('\tInvalid Network Number\n')
         except:
             print('\tInvalid Network Number\n')
-    return(networks[int(selected)]['id'], networks[int(selected)]['name'])
+    return(netList[int(selected)]['id'], netList[int(selected)]['name'])
 
 def get_network_switch_list(dashboard, netId):
     # Fetch all network devices
     devices = dashboard.networks.getNetworkDevices(netId)
     msList = []
-    # Filter only MS devices
+    
+    # Filter networks
     for device in devices:
         if 'MS' in device["model"]:
             msList.append(device)
