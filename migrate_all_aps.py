@@ -141,7 +141,10 @@ src_net, src_netName = select_net(dashboard, selected_org)
 print('\n\nSelect destination network...\n')
 dst_net, dst_netName = select_net(dashboard, selected_org)
 
-print(f'\nSource network {src_netName} and destination network {dst_netName} selected. Continuing...')
+confirm = get_yn_response(f'\nSource network {src_netName} and destination network {dst_netName} selected. Continue? (Y/N): ')
+
+if confirm == 'n':
+    exit()
 
 # Get list of network devices
 devString = 'MR'
