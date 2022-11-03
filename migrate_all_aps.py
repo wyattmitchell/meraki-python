@@ -138,8 +138,6 @@ selected_org, orgName = select_org(dashboard)
 print('\n\nSelect source network...\n')
 src_net, src_netName = select_net(dashboard, selected_org)
 
-clear()
-
 print('\n\nSelect destination network...\n')
 dst_net, dst_netName = select_net(dashboard, selected_org)
 
