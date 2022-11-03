@@ -111,21 +111,16 @@ def select_device(deviceList):
     return(deviceList[int(selected)]['serial'], deviceList[int(selected)]['name'])
 
 def get_yn_response(question):
-    isDone = False
-    while isDone == False:
-        resp = input(question)
-        try:
-            if resp == 'Y' or 'y' or 'N' or 'n':
-                isDone = True
-            else:
-                print('\tInvalid response. Please enter Y or N.\n')
-        except:
-            print('\tInvalid response.\n')
-    return resp.lower()
+    while True:
+        resp = input(question).strip()
+        if resp.lower() in ['y','n']:
+            return resp.lower()
+        print('Invalid response. Please enter Y or N.\n')
 
 def clear():
      os.system('cls' if os.name=='nt' else 'clear')
      return("   ")
+
 # ---- Begin Script Execution ----
 
 consoleDebug = False
