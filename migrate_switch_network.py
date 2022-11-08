@@ -20,14 +20,14 @@ import json
 
 # ToDo:
 # Maybe STP config migration (preserve STP priority for switches / stacks).
-# Maybe powerExceptions (getnetworkswitchsettings)
-# Finalize additional port configs that can move over. 
-# For those that rely on network wide settings like access policies maybe tag interfaces with policy name for easy manual config after migration?
+# Maybe powerExceptions (getnetworkswitchsettings) (MS350/355 only so leaving for later.)
+# For ports that rely on network wide settings like access policies maybe tag interfaces with policy name for easy manual config after migration.
 
-# ---- Begin Script ----
+# ---- Begin Script Functions ----
+
 
 def select_org(dashboard):
-    # Fetch and select the organization
+    # Fetch, sort by name and select organization
     print('\n\nFetching organizations...\n')
     organizations = dashboard.organizations.getOrganizations()
     organizations.sort(key=lambda x: x['name'])
@@ -50,23 +50,30 @@ def select_org(dashboard):
     return(organizations[int(selected)]['id'], organizations[int(selected)]['name'])
 
 def select_net(dashboard, orgId):
-    # Fetch and select the network
+    # Fetch and select network
     networks = dashboard.organizations.getOrganizationNetworks(orgId)
 
     # Prompt search for network name to filter for shorter list.
-    search_name = input('Enter search string: ')
+    searchName = input('Enter search string or leave blank for all networks: ')
 
     netList = []
-    if search_name == '':
-        netList = networks
-    else:
-        # Filter only MS devices
-        for net in networks:
-            if search_name in net["name"]:
-                netList.append(net)
+    while netList == []:
+        if searchName == '':
+            # Return all networks for blank search string.
+            netList = networks
+        else:   
+            # Return networks matching searchName.
+            for net in networks:
+                if searchName in net["name"]:
+                    netList.append(net)
+        # Validate at least 1 network is returned and prompt for new search string if empty.
+        if netList == []:
+            print(f'No networks found matching {searchName}.')
+            searchName = input('Enter search string or leave blank for all networks: ')
     
     netList.sort(key=lambda x: x['name'])
     counter = 0
+
     print('Networks:')
     for net in netList:
         netName = net['name']
@@ -84,61 +91,67 @@ def select_net(dashboard, orgId):
             print('\tInvalid Network Number\n')
     return(netList[int(selected)]['id'], netList[int(selected)]['name'])
 
-def get_network_switch_list(dashboard, netId):
+def get_network_device_list(dashboard, netId, devString):
     # Fetch all network devices
     devices = dashboard.networks.getNetworkDevices(netId)
-    msList = []
+    
+    if consoleDebug == True: print(f'{devices}')
+
+    deviceList = []
     
     # Filter networks
     for device in devices:
-        if 'MS' in device["model"]:
-            msList.append(device)
-    return msList
+        if devString in device["model"]:
+            deviceList.append(device)
 
-def select_sw(msList):
-    msList.sort(key=lambda x: x['name'])
+    if consoleDebug == True: print(deviceList)
+
+    return deviceList
+
+def select_device(deviceList):
+    # Sort and select from input devices list.
+    deviceList.sort(key=lambda x: x.setdefault('name', x['mac']))
     counter = 0
-    print('Select switch to migrate.')
-    for sw in msList:
-        swName = sw['name']
-        print(f'{counter} - {swName}')
+    for dev in deviceList:
+        devName = dev.setdefault('name', dev['mac'])
+        print(f'{counter} - {devName}')
         counter+=1
     isDone = False
     while isDone == False:
-        selected = input('\nSelect the switch you would like to migrate: ')
+        selected = input('\nSelect the device you would like to migrate: ')
         try:
             if int(selected) in range(0,counter):
                 isDone = True
             else:
-                print('\tInvalid Switch Number\n')
+                print('\tInvalid Device Number\n')
         except:
-            print('\tInvalid Switch Number\n')
-    return(msList[int(selected)]['serial'], msList[int(selected)]['name'])
+            print('\tInvalid Device Number\n')
+    return(deviceList[int(selected)]['serial'], deviceList[int(selected)]['name'])
 
-def get_response(question):
-    isDone = False
-    while isDone == False:
-        resp = input(question)
-        try:
-            if resp == 'Y' or 'y' or 'N' or 'n':
-                isDone = True
-            else:
-                print('\tInvalid response. Please enter Y or N.\n')
-        except:
-            print('\tInvalid response.\n')
-    return resp.lower()
+def get_yn_response(question):
+    # Prompt for user Y/N response to input question.
+    while True:
+        resp = input(question).strip()
+        if resp.lower() in ['y','n']:
+            return resp.lower()
+        print('Invalid response. Please enter Y or N.\n')
 
 def migrate_switch(dashboard, swSerial):
+    # Get switch port config then remove/add from src to dst and finally re-apply port configs.
     print('\nGetting switch port settings...')
     swConfig = dashboard.switch.getDeviceSwitchPorts(swSerial)
     if consoleDebug == True:
         print(swConfig)
+
     try:
         print('\nRemoving switch from source network...')
-        dashboard.networks.removeNetworkDevices(src_net, swSerial)
+        dashboard.networks.removeNetworkDevices(srcNetId, swSerial)
         claimSerial = [swSerial]
+
         print('\nAdding switch to destination network...')
-        dashboard.networks.claimNetworkDevices(dst_net, claimSerial)
+        dashboard.networks.claimNetworkDevices(dstNetId, claimSerial)
+
+        # Read each port config then apply as access or trunk.
         print('\nApplying port configuration...')
         for port in swConfig:
             # Extract settings
@@ -171,58 +184,70 @@ def migrate_switch(dashboard, swSerial):
             except Exception as error:
                 print(str(error))
     except:
+        # If move or port config fails, write out log with serial number and port config JSON for manual review.
         with open('logs/' + 'migrate_log.txt', 'a') as outfile:
-            outfile.write(f'{datetime.datetime.now()} - switch migration error. Writing switch config. Validate switch remove and claim then validate config from string below.\n')
+            outfile.write(f'{datetime.datetime.now()} - switch migration error. Switch serial {swSerial}. Writing switch config. Validate switch remove and claim then validate config from string below.\n')
             outfile.write(json.dumps(swConfig))
             outfile.write('\n\n')
         print('Errors encountered. See error log.')
     return
 
-def set_STP(dashboard, stpInfo, dst_net, serial):
-    dashboard.switch.updateNetworkSwitchStp(dst_net)
 
+# ---- Begin Script Main ----
+
+# Debug options
+### Additional logging to Console
 consoleDebug = False
+### Log Meraki SDK activity to file
 logDebug = False
-setSTP = True
 
-# Connect to dashboard, select org and network
+# Connect to dashboard, select org and networks
 dashboard = meraki.DashboardAPI(suppress_logging=not logDebug)
-selected_org, orgName = select_org(dashboard)
+orgId, orgName = select_org(dashboard)
 
 print('Select source network:')
-src_net, src_netName = select_net(dashboard, selected_org)
+srcNetId, srcNetName = select_net(dashboard, orgId)
 
 print('Select destination network:')
-dst_net, dst_netName = select_net(dashboard, selected_org)
+dstNetId, dstNetName = select_net(dashboard, orgId)
 
-print(f'\nSource network {src_netName} and destination network {dst_netName} selected. Continuing...')
+print(f'\nSource network {srcNetName} and destination network {dstNetName} selected. Continuing...')
 
 # Get scope of change
-scope_all = get_response('\nMigrate all switches in network? (Y/N): ')
+scopeAll = get_yn_response('\nMigrate all switches in network? (Y/N): ')
 
-# Process switch migrations
-if scope_all == 'n':
+# Set MS as device type for device list
+devString = 'MS'
+
+# Process individual switch/stack migrations
+if scopeAll == 'n':
+    # moveSwitch is prompted after each migration. Allows additional migrations or end of script.
     moveSwitch = 'y'
     while moveSwitch == 'y':
         # Get list of network switches
-        swList = get_network_switch_list(dashboard, src_net)   
+        swList = get_network_device_list(dashboard, srcNetId, devString)   
         if swList == []:
             print('No switches found in network. Exiting...')
             break
         # Get list of network stacks
-        stackList = dashboard.switch.getNetworkSwitchStacks(src_net)
+        stackList = dashboard.switch.getNetworkSwitchStacks(srcNetId)
 
+        if consoleDebug == True: print(swList)
+        
         # Prompt for switch to migrate
-        swSerial, swName = select_sw(swList)
+        swSerial, swName = select_device(swList)
 
+        # --- Begin stack check and stack migration section. ---
         # Check if selected serial is a stack member and prompt to move full stack if found.
+        # If serial is not a stack member moveStack is empty and will skip past moveStack sections.
+
         moveStack = ''
         for stack in stackList:
             if swSerial in stack['serials']:
                 stackId = stack['id']
                 stackName = stack['name']
                 stackSerials = stack['serials']
-                moveStack = get_response(f'{swName} is part of a stack with name {stackName}. Would you like to move the entire stack? (Y/N): ')
+                moveStack = get_yn_response(f'{swName} is part of a stack with name {stackName}. Would you like to move the entire stack? (Y/N): ')
                 break
 
         if moveStack == 'n':
@@ -237,40 +262,51 @@ if scope_all == 'n':
                 switchName = switch['name']
                 switchSerial = switch['serial']
                 print(f'{switchName} with serial {switchSerial} is a member of this stack.\n')
-            proceed = get_response('\nWould you like to proceed with stack migration? (Y/N): ')
+            
+            proceed = get_yn_response('\nWould you like to proceed with stack migration? (Y/N): ')
 
             if proceed == 'y':
-                print(f'\nDeleting stack from {src_netName}...')
-                dashboard.switch.deleteNetworkSwitchStack(src_net, stackId)
-                print(f'\nMigrating switches to {dst_netName}...')
+                print(f'\nDeleting stack from {srcNetName}...')
+                dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
+                print(f'\nMigrating switches to {dstNetName}...')
                 for serial in stackSerials:
                     migrate_switch(dashboard, serial)
-                print(f'Creating {stackName} stack in {dst_netName}...')
-                dashboard.switch.createNetworkSwitchStack(dst_net, stackName, stackSerials)
+                print(f'Creating {stackName} stack in {dstNetName}...')
+                dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
                 continue
             
             if proceed == 'n':
                 print('Skipping switch and stack. Please select a new switch to migrate.\n')
                 continue
-            
-        # Confirm move
-        resp = get_response(f'Migrating {swName} with serial {swSerial} from {src_netName} to {dst_netName}. Continue? (Y/N): ')
+        # --- End stack migration section. ---
+
+        # --- Begin non-stack switch section. ---
+        # Prompt to confirm migration.
+        resp = get_yn_response(f'Migrating {swName} with serial {swSerial} from {srcNetName} to {dstNetName}. Continue? (Y/N): ')
         if resp == 'y':
             migrate_switch(dashboard, swSerial)
         else:
             print('Migration cancelled...\n')
-        moveSwitch = get_response('Migrate another switch between these networks? (Y/N): ')
 
-elif scope_all == 'y':
+        # Prompt if another switch to migrate.
+        moveSwitch = get_yn_response('Migrate another switch between these networks? (Y/N): ')
+
+# --- Begin section to migrate all switches in network. ---
+# Functions as above without prompts for each device.
+# All stacks are migrated first, then switch list is fetched for any remaining to be migrated.
+elif scopeAll == 'y':
     while True:
         # Get list of network switches
-        swList = get_network_switch_list(dashboard, src_net)
+        swList = get_network_device_list(dashboard, srcNetId, devString)
         if swList == []:
             print('No switches found in network. Exiting...')
             break
+
         # Get list of network stacks
-        stackList = dashboard.switch.getNetworkSwitchStacks(src_net)
+        stackList = dashboard.switch.getNetworkSwitchStacks(srcNetId)
         
+        # Migrate all stacks.
+        # For each stack - delete stack, migrate switches, create stack in new network.
         for stack in stackList:
             stackId = stack['id']
             stackName = stack['name']
@@ -283,26 +319,24 @@ elif scope_all == 'y':
                 switchSerial = switch['serial']
                 print(f'{switchName} with serial {switchSerial} is a member of this stack.')
             
-            print(f'\nDeleting stack from {src_netName}...')
-            dashboard.switch.deleteNetworkSwitchStack(src_net, stackId)
-            print(f'\nMigrating all switches to {dst_netName}...')
+            print(f'\nDeleting stack from {srcNetName}...')
+            dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
+            print(f'\nMigrating all switches to {dstNetName}...')
             for serial in stackSerials:
                 migrate_switch(dashboard, serial)
-            print(f'Creating {stackName} stack in {dst_netName}...')
-            dashboard.switch.createNetworkSwitchStack(dst_net, stackName, stackSerials)
+            print(f'Creating {stackName} stack in {dstNetName}...')
+            dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
             break
 
         # Refresh list of network switches (after stacks have moved)
-        swList = get_network_switch_list(dashboard, src_net)
+        swList = get_network_device_list(dashboard, srcNetId, devString)
         if swList == []:
             print('No standalone switches found in network. Exiting...')
             break
 
+        # Migrate remaining switches
         for sw in swList:
             swSerial = sw['serial']
-            swName = sw['name']
-                                
-            # Migrate single switch
             migrate_switch(dashboard, swSerial)
 
 print('Complete')
