@@ -49,7 +49,7 @@ def select_org(dashboard):
             print('\tInvalid Organization Number\n')
     return(organizations[int(selected)]['id'], organizations[int(selected)]['name'])
 
-def select_net(dashboard, orgId):
+def select_net_search(dashboard, orgId):
     # Fetch and select network
     networks = dashboard.organizations.getOrganizationNetworks(orgId)
 
@@ -206,10 +206,10 @@ dashboard = meraki.DashboardAPI(suppress_logging=not logDebug)
 orgId, orgName = select_org(dashboard)
 
 print('Select source network:')
-srcNetId, srcNetName = select_net(dashboard, orgId)
+srcNetId, srcNetName = select_net_search(dashboard, orgId)
 
 print('Select destination network:')
-dstNetId, dstNetName = select_net(dashboard, orgId)
+dstNetId, dstNetName = select_net_search(dashboard, orgId)
 
 print(f'\nSource network {srcNetName} and destination network {dstNetName} selected. Continuing...')
 
