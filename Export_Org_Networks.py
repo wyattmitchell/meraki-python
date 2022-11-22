@@ -12,7 +12,7 @@ or implied.
 """
 
 import meraki
-import json
+import os
 
 # Instructions:
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
@@ -43,13 +43,15 @@ def select_org(dashboard):
 # ---- Begin Script ----
 
 # Connect to dashboard, select org
-dashboard = meraki.DashboardAPI(suppress_logging=True)
+dashboard = meraki.DashboardAPI(output_log=True, log_path="./logs/MerakiSDK", log_file_prefix=os.path.basename(__file__), print_console=False)
 selected_org, orgName = select_org(dashboard)
 
 out_path = orgName + '_NetExport.csv'
 
 with open(out_path, 'w') as file:
     orgNets = dashboard.organizations.getOrganizationNetworks(selected_org)
+    export_string = 'NetworkId,NetworkName'
+    file.write(export_string + '\n')
     for net in orgNets:
         export_string = net['id'] + ',' + net['name']
         file.write(export_string + '\n')
