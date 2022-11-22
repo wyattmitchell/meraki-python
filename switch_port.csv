@@ -1,0 +1,35 @@
+﻿Line Type,,,,,,,,,,
+ignore,"Use ""ignore"" for line type to insert informational lines within the CSV. IE. Inline Headers between sections",,,,,,,,,
+ignore,,,,,,,,,,
+ignore,Switch Name,Serial,Address,,,,,,,
+switch,MySwitch,,"500 Terry A Francois San Francisco, CA 94158",,,,,,,
+ignore,,,,,,,,,,
+ignore,Port Name,Port ID,Enabled?,PoE Enabled?,Type,Vlan native or data,VoiceVlan only for access,AllowedVlan only for trunk,STP Enabled?,STPGuard
+port,My Port,1,TRUE,TRUE,access,1,2,N/A,TRUE,disabled
+port,Printer,2,TRUE,TRUE,access,1,2,N/A,TRUE,root guard
+port,Trunk,3,TRUE,TRUE,trunk,1,0,"1-100,110",TRUE,loop guard
+port,blocked,4,FALSE,FALSE,access,10,2,N/A,TRUE,bpdu guard
+port,,5,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,6,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,7,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,8,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,9,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,10,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,11,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,12,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,13,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,14,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,15,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,16,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,17,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,18,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,19,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,20,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,21,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,22,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,23,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,24,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,25,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,26,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,27,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
+port,,28,TRUE,TRUE,access,1,0,N/A,TRUE,bpdu guard
