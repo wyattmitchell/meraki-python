@@ -183,21 +183,6 @@ def get_yn_response(question):
             return resp.lower()
         print('Invalid response. Please enter Y or N.\n')
 
-def import_csv():
-    rows = []
-    try:
-        with open('radius_update.csv', 'r') as file:
-            csvreader = csv.reader(file)
-            csvheader = next(csvreader)
-            for row in csvreader:
-                rows.append(row)
-        print('\n\nSuccessfully imported the following data:\n')
-        print(tabulate.tabulate(rows, headers=csvheader))
-    except:
-        print(f'\nCould not open or read {csvname}. Exiting script.\n')
-        exit()
-    return rows
-
 def prompt_import_csv(question):
     # Prompt for CSV to import with question.
     while True:
@@ -237,14 +222,6 @@ if netListImport == 'y':
 else:
     print('Continuing to network selection...')
     allNets = get_yn_response('Update RADIUS info in all networks? Y/N: ')
-
-# cont = get_yn_response('\nDo you want to continue with the above RADIUS replacements? Y/N: ')
-
-# if cont == 'n':
-#     print('Exiting...')
-#     exit()
-# else:
-#     print('Continuing...\n')
 
 # Connect to dashboard, select org and network
 dashboard = meraki.DashboardAPI(suppress_logging=not logDebug)
