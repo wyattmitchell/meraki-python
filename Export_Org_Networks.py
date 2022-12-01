@@ -43,6 +43,7 @@ def select_org(dashboard):
 # ---- Begin Script ----
 
 # Connect to dashboard, select org
+
 dashboard = meraki.DashboardAPI(output_log=True, log_path="./logs/MerakiSDK", log_file_prefix=os.path.basename(__file__), print_console=False)
 selected_org, orgName = select_org(dashboard)
 

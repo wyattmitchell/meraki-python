@@ -12,16 +12,18 @@ or implied.
 """
 
 import meraki
+import batch_helper
 import datetime
 import json
 
 # Instructions:
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
+# Script leverages action batches to bulk apply port configs to minimize API calls.
 
 # ToDo:
 # Maybe STP config migration (preserve STP priority for switches / stacks).
 # Maybe powerExceptions (getnetworkswitchsettings) (MS350/355 only so leaving for later.)
-# For ports that rely on network wide settings like access policies maybe tag interfaces with policy name for easy manual config after migration.
+# For ports that rely on network wide settings like access policies maybe tag interfaces with policy name for easy manual config after migration...
 
 # ---- Begin Script Functions ----
 
@@ -49,7 +51,7 @@ def select_org(dashboard):
             print('\tInvalid Organization Number\n')
     return(organizations[int(selected)]['id'], organizations[int(selected)]['name'])
 
-def select_net_search(dashboard, orgId):
+def select_net(dashboard, orgId):
     # Fetch and select network
     networks = dashboard.organizations.getOrganizationNetworks(orgId)
 
@@ -136,13 +138,15 @@ def get_yn_response(question):
             return resp.lower()
         print('Invalid response. Please enter Y or N.\n')
 
-def migrate_switch(dashboard, swSerial):
+def migrate_switch_ab(dashboard, swSerial):
+    # Generates all switch migration actions and returns the list to run as an action batch.
     # Get switch port config then remove/add from src to dst and finally re-apply port configs.
     print('\nGetting switch port settings...')
     swConfig = dashboard.switch.getDeviceSwitchPorts(swSerial)
     if consoleDebug == True:
         print(swConfig)
 
+    actionList = list()
     try:
         print('\nRemoving switch from source network...')
         dashboard.networks.removeNetworkDevices(srcNetId, swSerial)
@@ -152,7 +156,7 @@ def migrate_switch(dashboard, swSerial):
         dashboard.networks.claimNetworkDevices(dstNetId, claimSerial)
 
         # Read each port config then apply as access or trunk.
-        print('\nApplying port configuration...')
+        # print('\nApplying port configuration...')
         for port in swConfig:
             # Extract settings
             pID = port['portId']
@@ -176,11 +180,12 @@ def migrate_switch(dashboard, swSerial):
                 pVoice = None
             try: 
                 if pType == "access":
-                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, voiceVlan=pVoice, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
-                    print(f'\nPort {pID} configured as {pType} with data vlan {pVlan} and voice vlan {pVoice}.')
+                    action = dashboard.batch.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, voiceVlan=pVoice, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
+                    # print(f'\nPort {pID} configured as {pType} with data vlan {pVlan} and voice vlan {pVoice}.')
                 elif pType == "trunk":
-                    response = dashboard.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, allowedVlans=pAllowed, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
-                    print(f'\nPort {pID} configured as {pType} with native vlan {pVlan} and allowed vlans {pVoice}.')
+                    action = dashboard.batch.switch.updateDeviceSwitchPort(serial=swSerial, portId=pID, name=pName, enabled=pEnable, poeEnabled=pPOE, type=pType, vlan=pVlan, allowedVlans=pAllowed, rstpEnabled=pSTPenable, stpGuard=pSTPguard, tags=pTags, linkNegotiation=pLink, isolationEnabled=pIsolate, udld=pUdld)
+                    # print(f'\nPort {pID} configured as {pType} with native vlan {pVlan} and allowed vlans {pVoice}.')
+                actionList.append(action)
             except Exception as error:
                 print(str(error))
     except:
@@ -190,6 +195,19 @@ def migrate_switch(dashboard, swSerial):
             outfile.write(json.dumps(swConfig))
             outfile.write('\n\n')
         print('Errors encountered. See error log.')
+    return actionList
+
+def run_batch(abHelper):
+    abHelper.prepare()
+    abHelper.generate_preview()
+    abHelper.execute()
+
+    print(f'Status is {abHelper.status}')
+
+    batches_report = dashboard.organizations.getOrganizationActionBatches(orgId)
+    new_batches_statuses = [{'id': batch['id'], 'status': batch['status']} for batch in batches_report if batch['id'] in abHelper.submitted_new_batches_ids]
+    failed_batch_ids = [batch['id'] for batch in new_batches_statuses if batch['status']['failed']]
+    print(f'Failed batch IDs are as follows: {failed_batch_ids}')
     return
 
 
@@ -206,10 +224,10 @@ dashboard = meraki.DashboardAPI(suppress_logging=not logDebug)
 orgId, orgName = select_org(dashboard)
 
 print('Select source network:')
-srcNetId, srcNetName = select_net_search(dashboard, orgId)
+srcNetId, srcNetName = select_net(dashboard, orgId)
 
 print('Select destination network:')
-dstNetId, dstNetName = select_net_search(dashboard, orgId)
+dstNetId, dstNetName = select_net(dashboard, orgId)
 
 print(f'\nSource network {srcNetName} and destination network {dstNetName} selected. Continuing...')
 
@@ -225,7 +243,7 @@ if scopeAll == 'n':
     moveSwitch = 'y'
     while moveSwitch == 'y':
         # Get list of network switches
-        swList = get_network_device_list(dashboard, srcNetId, devString)
+        swList = get_network_device_list(dashboard, srcNetId, devString)   
         if swList == []:
             print('No switches found in network. Exiting...')
             break
@@ -266,13 +284,22 @@ if scopeAll == 'n':
             proceed = get_yn_response('\nWould you like to proceed with stack migration? (Y/N): ')
 
             if proceed == 'y':
+                actionList = list()
                 print(f'\nDeleting stack from {srcNetName}...')
                 dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
-                print(f'\nMigrating switches to {dstNetName}...')
+                print(f'\nPreparing switch migration to {dstNetName}...')
                 for serial in stackSerials:
-                    migrate_switch(dashboard, serial)
+                    action = migrate_switch_ab(dashboard, serial)
+                    actionList.extend(action)
+                
+                # Create batch helper instance.
+                abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
+                run_batch(abHelper)
+                actionList = list()
+
                 print(f'Creating {stackName} stack in {dstNetName}...')
                 dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
+                moveswitch = get_yn_response('Migration complete. Migrate another switch between these networks?')
                 continue
             
             if proceed == 'n':
@@ -284,7 +311,12 @@ if scopeAll == 'n':
         # Prompt to confirm migration.
         resp = get_yn_response(f'Migrating {swName} with serial {swSerial} from {srcNetName} to {dstNetName}. Continue? (Y/N): ')
         if resp == 'y':
-            migrate_switch(dashboard, swSerial)
+            actionList = list()
+            action = migrate_switch_ab(dashboard, swSerial)
+            actionList.extend(action)
+            abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
+            run_batch(abHelper)
+            actionList = list()
         else:
             print('Migration cancelled...\n')
 
@@ -319,11 +351,19 @@ elif scopeAll == 'y':
                 switchSerial = switch['serial']
                 print(f'{switchName} with serial {switchSerial} is a member of this stack.')
             
+            actionList = list()
             print(f'\nDeleting stack from {srcNetName}...')
             dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
-            print(f'\nMigrating all switches to {dstNetName}...')
+            print(f'\nPreparing migration to {dstNetName}...')
             for serial in stackSerials:
-                migrate_switch(dashboard, serial)
+                action = migrate_switch_ab(dashboard, serial)
+                actionList.extend(action)
+
+            # Create batch helper instance.
+            abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
+            run_batch(abHelper)
+            actionList = list()
+
             print(f'Creating {stackName} stack in {dstNetName}...')
             dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
             break
@@ -337,6 +377,12 @@ elif scopeAll == 'y':
         # Migrate remaining switches
         for sw in swList:
             swSerial = sw['serial']
-            migrate_switch(dashboard, swSerial)
-
+            swName = sw['name']
+            print(f'Migrating {swName}...')
+            actionList = list()
+            action = migrate_switch_ab(dashboard, swSerial)
+            actionList.extend(action)
+            abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
+            run_batch(abHelper)
+            actionList = list()
 print('Complete')
