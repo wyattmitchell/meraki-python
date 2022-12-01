@@ -43,16 +43,49 @@ def select_org(dashboard):
 # ---- Begin Script ----
 
 # Connect to dashboard, select org
-
 dashboard = meraki.DashboardAPI(output_log=True, log_path="./logs/MerakiSDK", log_file_prefix=os.path.basename(__file__), print_console=False)
-selected_org, orgName = select_org(dashboard)
+orgId, orgName = select_org(dashboard)
 
-out_path = orgName + '_NetExport.csv'
+outPath = orgName + '_DeviceExport.csv'
 
-with open(out_path, 'w') as file:
-    orgNets = dashboard.organizations.getOrganizationNetworks(selected_org)
-    export_string = 'NetworkId,NetworkName'
+searchString = input('Enter string to match on device model or blank for all: ')
+orgDevices = dashboard.organizations.getOrganizationDevices(orgId)
+orgNets = dashboard.organizations.getOrganizationNetworks(orgId)
+
+if not searchString == '':
+    devList = []
+    for dev in orgDevices:
+        if searchString in dev['model']:
+            devList.append(dev)
+    orgDevices = devList
+
+with open(outPath, 'w') as file:
+    export_string = 'name,lat,lng,address,networkId,networkname,serial,model,mac,lanIp,firmware,productType'
     file.write(export_string + '\n')
-    for net in orgNets:
-        export_string = net['id'] + ',' + net['name']
+    for dev in orgDevices:
+        for net in orgNets:
+            if dev['networkId'] == net['id']:
+                netName = net['name']
+                break
+        try:
+            devName = dev['name']
+        except:
+            devName = dev['mac']
+        devLat = str(dev['lat'])
+        devLng = str(dev['lng'])
+        devAddress = ''.join(str(dev['address']).splitlines()).replace(',','')
+        devNet = dev['networkId']
+        devSerial = dev['serial']
+        devModel = dev['model']
+        devMac = dev['mac']
+        if 'lanIp' in dev:
+            if dev['lanIp'] == None:
+                devIp = 'None'
+            else:
+                devIp = dev['lanIp']
+        else:
+            devIp = 'NA'
+        devFirmware = dev['firmware']
+        devType = dev['productType']
+        export_string = devName + ',' + devLat + ',' + devLng  + ',' + devAddress + ',' + devNet + ',' + netName + ',' + devSerial + ',' + devModel + ',' + devMac + ',' + devIp + ',' + devFirmware + ',' + devType 
         file.write(export_string + '\n')

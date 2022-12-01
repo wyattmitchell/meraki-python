@@ -1,0 +1,5 @@
+﻿Type,Old Host,New Host,New Port,New Secret
+radius,172.20.1.150,172.20.1.15,1000,mysecret
+accounting,172.20.1.150,172.20.1.15,1001,mysecret
+radius,172.20.1.15,172.20.1.150,1812,mysecret
+accounting,172.20.1.15,172.20.1.150,1813,mysecret

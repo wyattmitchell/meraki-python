@@ -225,7 +225,7 @@ if scopeAll == 'n':
     moveSwitch = 'y'
     while moveSwitch == 'y':
         # Get list of network switches
-        swList = get_network_device_list(dashboard, srcNetId, devString)   
+        swList = get_network_device_list(dashboard, srcNetId, devString)
         if swList == []:
             print('No switches found in network. Exiting...')
             break
