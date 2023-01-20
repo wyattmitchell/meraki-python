@@ -14,6 +14,7 @@ Some scripts read or write CSV files. Example files and notes on usage will be r
 #### Script descriptions:
 - AP_Replacement.py - Used to copy AP attributes (name, tags, location, address, floorplan) to a new serial for replacement or upgrade. Reads a CSV to match existing/new serial numbers.
 - APInfo_to_CSV.py - Used to gather a set of AP BSSID and CDP/LLDP information for all organizations and networks. Output is a set of CSV files with AP data.
+- device_status.py - List all offline, alerting and dormant devices. Write to CSV.
 - Energy_Savings_Calc.py - Gather MS PoE usage for the past day, estimate monthly use and calculate potential savings through port scheduling.
 - Export_Org_Networks.py - Exports to CSV a list of all networks within a selected organization. CSV can then be modified and used as an input for other scripts.
 - migrate_all_aps.py - CLI driven tool used to migrate all APs from one dashboard network to another while preserving AP data such as name, lat/lng, address, floorplan if it exists in the target network, etc.

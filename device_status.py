@@ -13,7 +13,6 @@ or implied.
 
 import meraki
 import os
-import csv
 
 # Instructions:
 # Set APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
@@ -57,7 +56,7 @@ devices = dashboard.organizations.getOrganizationDevicesAvailabilities(organizat
 
 outPath = orgName + csvOutSuffix
 with open(outPath, 'w') as file:
-    export_string = 'Status,MAC,Name,NetId'
+    export_string = 'Status,MAC,DeviceName,NetId'
     file.write(export_string + '\n')
     for a in devices:
         if (a['status'] == 'alerting' or a['status'] == 'dormant' or a['status'] == 'offline'):

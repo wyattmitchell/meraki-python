@@ -197,6 +197,22 @@ def migrate_switch_ab(dashboard, swSerial):
         print('Errors encountered. See error log.')
     return actionList
 
+def get_link_aggregation(aggrList, serialList):
+    moveAggr = 'n'
+    moveAggrList = []
+    if aggrList:
+        for linkAggr in aggrList:
+            for port in linkAggr['switchPorts']:
+                if port['serial'] in serialList:
+                    moveAggr = 'y'
+            if moveAggr == 'y':
+                moveAggrList.append(linkAggr)
+                moveAggr = 'n'
+
+    if consoleDebug == True: print(moveAggrList)
+
+    return moveAggrList
+
 def run_batch(abHelper):
     abHelper.prepare()
     abHelper.generate_preview()
@@ -250,7 +266,11 @@ if scopeAll == 'n':
         # Get list of network stacks
         stackList = dashboard.switch.getNetworkSwitchStacks(srcNetId)
 
+        # Get list of switch port aggregates
+        aggrList = dashboard.switch.getNetworkSwitchLinkAggregations(srcNetId)
+        
         if consoleDebug == True: print(swList)
+        if consoleDebug == True: print(aggrList)
         
         # Prompt for switch to migrate
         swSerial, swName = select_device(swList)
@@ -275,15 +295,22 @@ if scopeAll == 'n':
         if moveStack == 'y':
             print('Preparing to migrate stack...\n')
             print('Listing all stack members...\n')
+            serialList = []
             for serial in stackSerials:
                 switch = dashboard.devices.getDevice(serial)
                 switchName = switch['name']
                 switchSerial = switch['serial']
+                serialList.append(switchSerial)
+                if consoleDebug == True: print(serialList)
                 print(f'{switchName} with serial {switchSerial} is a member of this stack.\n')
             
             proceed = get_yn_response('\nWould you like to proceed with stack migration? (Y/N): ')
-
+            
             if proceed == 'y':
+
+                print('Gathering any link aggregations to migrate...\n')
+                moveAggrList = get_link_aggregation(aggrList, serialList)
+
                 actionList = list()
                 print(f'\nDeleting stack from {srcNetName}...')
                 dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
@@ -299,24 +326,44 @@ if scopeAll == 'n':
 
                 print(f'Creating {stackName} stack in {dstNetName}...')
                 dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
-                moveswitch = get_yn_response('Migration complete. Migrate another switch between these networks?')
+
+                if moveAggrList:
+                    print('Creating aggregates...')
+                    for aggr in moveAggrList:
+                        dashboard.switch.createNetworkSwitchLinkAggregation(networkId=dstNetId, switchPorts=aggr['switchPorts'])
+                    moveAggrList = []
+                
+                moveSwitch = get_yn_response('Migration complete. Migrate another switch between these networks? (Y/N): ')
                 continue
             
             if proceed == 'n':
                 print('Skipping switch and stack. Please select a new switch to migrate.\n')
                 continue
+
         # --- End stack migration section. ---
 
         # --- Begin non-stack switch section. ---
         # Prompt to confirm migration.
         resp = get_yn_response(f'Migrating {swName} with serial {swSerial} from {srcNetName} to {dstNetName}. Continue? (Y/N): ')
         if resp == 'y':
+            
+            print('Gathering any link aggregations to migrate...\n')
+            serialList = [swSerial]
+            moveAggrList = get_link_aggregation(aggrList, serialList)
+
             actionList = list()
             action = migrate_switch_ab(dashboard, swSerial)
             actionList.extend(action)
             abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
             run_batch(abHelper)
             actionList = list()
+
+            if moveAggrList:
+                print('Creating aggregates...')
+                for aggr in moveAggrList:
+                    dashboard.switch.createNetworkSwitchLinkAggregation(networkId=dstNetId, switchPorts=aggr['switchPorts'])
+                moveAggrList = []
+
         else:
             print('Migration cancelled...\n')
 
@@ -336,6 +383,9 @@ elif scopeAll == 'y':
 
         # Get list of network stacks
         stackList = dashboard.switch.getNetworkSwitchStacks(srcNetId)
+
+        # Get list of switch port aggregates
+        aggrList = dashboard.switch.getNetworkSwitchLinkAggregations(srcNetId)
         
         # Migrate all stacks.
         # For each stack - delete stack, migrate switches, create stack in new network.
@@ -350,7 +400,11 @@ elif scopeAll == 'y':
                 switchName = switch['name']
                 switchSerial = switch['serial']
                 print(f'{switchName} with serial {switchSerial} is a member of this stack.')
-            
+                
+            print('Gathering any link aggregations to migrate...\n')
+            serialList = stackSerials
+            moveAggrList = get_link_aggregation(aggrList, serialList)
+
             actionList = list()
             print(f'\nDeleting stack from {srcNetName}...')
             dashboard.switch.deleteNetworkSwitchStack(srcNetId, stackId)
@@ -366,6 +420,13 @@ elif scopeAll == 'y':
 
             print(f'Creating {stackName} stack in {dstNetName}...')
             dashboard.switch.createNetworkSwitchStack(dstNetId, stackName, stackSerials)
+            
+            if moveAggrList:
+                print('Creating aggregates...')
+                for aggr in moveAggrList:
+                    dashboard.switch.createNetworkSwitchLinkAggregation(networkId=dstNetId, switchPorts=aggr['switchPorts'])
+                moveAggrList = []
+            
             break
 
         # Refresh list of network switches (after stacks have moved)
@@ -379,10 +440,17 @@ elif scopeAll == 'y':
             swSerial = sw['serial']
             swName = sw['name']
             print(f'Migrating {swName}...')
+            serialList = [swSerial]
+            moveAggrList = get_link_aggregation(aggrList, serialList)
             actionList = list()
             action = migrate_switch_ab(dashboard, swSerial)
             actionList.extend(action)
             abHelper = batch_helper.BatchHelper(dashboard_session=dashboard, organizationId=orgId, new_actions=actionList, linear_new_batches=True)
             run_batch(abHelper)
             actionList = list()
+            if moveAggrList:
+                print('Creating aggregates...')
+                for aggr in moveAggrList:
+                    dashboard.switch.createNetworkSwitchLinkAggregation(networkId=dstNetId, switchPorts=aggr['switchPorts'])
+                moveAggrList = []
 print('Complete')
