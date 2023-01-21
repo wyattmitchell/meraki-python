@@ -12,7 +12,6 @@ or implied.
 """
 
 import meraki
-import json
 
 # Instructions:
 # Set your APIKEY in environment variable MERAKI_DASHBOARD_API_KEY.
@@ -139,7 +138,7 @@ def get_yn_response(question):
 
 # Debug options
 ### Additional logging to Console
-consoleDebug = True
+consoleDebug = False
 ### Log Meraki SDK activity to file
 logDebug = False
 
