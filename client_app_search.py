@@ -179,11 +179,15 @@ appUsers = []
 for client in appUsageAll:
     apps = client['applicationUsage']
     for app in apps:
-        if appName in app['application']:
-            if consoleDebug == True:
-                matchedApp = app['application']
-                print(f'Matched app {matchedApp}.')
-            appUsers.append(client['clientId'])
+        if consoleDebug == True: print(f'App data list: {app}')
+        if app['application'] is None:
+            pass
+        else:
+            if appName in app['application']:
+                if consoleDebug == True:
+                    matchedApp = app['application']
+                    print(f'Matched app {matchedApp}.')
+                appUsers.append(client['clientId'])
 if consoleDebug == True: print(f'App users list: {appUsers}')
 
 # Collect final list of clients that used the selected SSID & the matched application
@@ -193,10 +197,17 @@ for client in filteredClientList:
         finalClientList.append(client)
 
 # Do some output or export
+out_path = netName + '_' + ssidName + '_' + appName + '_Export.csv'
 print('\nThe following clients match this search:\n')
-for client in finalClientList:
-    desc = client['description']
-    mac = client['mac']
-    ip = client['ip']
-    recentDevice = client['recentDeviceName']
-    print(f'Client {desc} with IP: {ip}, MAC {mac}, and last connected on {recentDevice}.')
+with open(out_path, 'w') as file:
+    export_string = 'Client,IP,MAC,PredictedDeviceType,LastConnectionPath'
+    file.write(export_string + '\n')
+    for client in finalClientList:
+        desc = client['description']
+        mac = client['mac']
+        ip = client['ip']
+        recentDevice = client['recentDeviceName']
+        predictedDeviceType = client['deviceTypePrediction']
+        print(f'Client {desc} with IP: {ip}, MAC {mac}, and last connected on {recentDevice}.')
+        export_string = f'{desc},{ip},{mac},{predictedDeviceType},{recentDevice}'
+        file.write(export_string + '\n')
