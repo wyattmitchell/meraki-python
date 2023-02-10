@@ -78,10 +78,25 @@ def getLldp(serial):
     portId = ""
     cdpPort = ""
     
-    deviceId = device_lldps_info['ports']['wired0']['cdp']['deviceId']
-    systemName = device_lldps_info['ports']['wired0']['lldp']['systemName']
-    portId = device_lldps_info['ports']['wired0']['lldp']['portId']
-    cdpPort = device_lldps_info['ports']['wired0']['cdp']['portId']
+    try:
+        deviceId = device_lldps_info['ports']['wired0']['cdp']['deviceId']
+    except:
+        deviceId = "None"
+    
+    try:
+        systemName = device_lldps_info['ports']['wired0']['lldp']['systemName']
+    except:
+        systemName = "None"
+    
+    try:
+        portId = device_lldps_info['ports']['wired0']['lldp']['portId']
+    except:
+        portId = "None"
+
+    try:
+        cdpPort = device_lldps_info['ports']['wired0']['cdp']['portId']
+    except:
+        cdpPort = "None"
 
     return_data = {'systemName': systemName,'portId': portId, 'deviceId': deviceId, 'cdpPort': cdpPort}
 
