@@ -142,8 +142,12 @@ for org in organizations:
             for i in devices_aps:
                 lldp_info = getLldp(i['serial'])
                 bssid_info = getBssid(i['serial'])
+                try:
+                    apName = i['name']
+                except:
+                    apName = i['mac']
                 for item in bssid_info:
-                    data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], lldp_info['deviceId'], lldp_info['cdpPort'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
+                    data = [network_info['name'], apName, lldp_info['systemName'], lldp_info['portId'], lldp_info['deviceId'], lldp_info['cdpPort'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
                     writer.writerow(data)
             print(f'{netName} complete. Continuing...')
 print('Script finished.')
