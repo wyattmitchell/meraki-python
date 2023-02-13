@@ -78,25 +78,10 @@ def getLldp(serial):
     portId = ""
     cdpPort = ""
     
-    try:
-        deviceId = device_lldps_info['ports']['wired0']['cdp']['deviceId']
-    except:
-        deviceId = "None"
-    
-    try:
-        systemName = device_lldps_info['ports']['wired0']['lldp']['systemName']
-    except:
-        systemName = "None"
-    
-    try:
-        portId = device_lldps_info['ports']['wired0']['lldp']['portId']
-    except:
-        portId = "None"
-
-    try:
-        cdpPort = device_lldps_info['ports']['wired0']['cdp']['portId']
-    except:
-        cdpPort = "None"
+    deviceId = device_lldps_info['ports']['wired0'].get('cdp', 'None').get('deviceId', 'None')
+    systemName = device_lldps_info['ports']['wired0'].get('lldp', 'None').get('systemName', 'None')
+    portId = device_lldps_info['ports']['wired0'].get('lldp', 'None').get('portId', 'None')
+    cdpPort = device_lldps_info['ports']['wired0'].get('cdp', 'None').get('portId', 'None')
 
     return_data = {'systemName': systemName,'portId': portId, 'deviceId': deviceId, 'cdpPort': cdpPort}
 
@@ -117,15 +102,7 @@ for org in organizations:
     print(f'Found Organization with ID {orgId} named {orgName}. Querying for devices...')
 
     # Get all MR S/N's
-    devices = dashboard.organizations.getOrganizationDevices(organizationId=orgId)
-
-    # Get all MR's
-    devices_aps = [i for i in devices if 'MR' in i['model']]
-
-    if verbose_console == True:
-        ## Print all AP detail
-        print('These are the APs:')
-        printj(devices_aps)
+    networks = dashboard.organizations.getOrganizationNetworks(organizationId=orgId)
 
     # Write CSV per organization with row per active SSID & Band for every AP
     csvname = str(orgName + '_AP_BSSID.csv')
@@ -135,13 +112,27 @@ for org in organizations:
         csvheader = ['Network', 'AP', 'LLDP_Name', 'LLDP_Port', 'CDP_Device', 'CDP_Port', 'SSID_Name', 'SSID_Band', 'SSID_Channel', 'SSID_ChannelWidth', 'BSSID']
         writer = csv.writer(f)
         writer.writerow(csvheader)
-        for i in devices_aps:
-            network_info = dashboard.networks.getNetwork(networkId=i['networkId'])
-            lldp_info = getLldp(i['serial'])
-            bssid_info = getBssid(i['serial'])
-            for item in bssid_info:
-                data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], lldp_info['deviceId'], lldp_info['cdpPort'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
-                writer.writerow(data)
-    print(f'{csvname} complete. Continuing...')
+
+        for net in networks:
+            netId = net['id']
+            netName = net['name']
+            devices = dashboard.networks.getNetworkDevices(networkId=netId)
+
+            # Get all MR's
+            devices_aps = [i for i in devices if any(m in i['model'] for m in ('MR','CW'))]
+
+            if verbose_console == True:
+                ## Print all AP detail
+                print('These are the APs:')
+                printj(devices_aps)
+            
+            network_info = dashboard.networks.getNetwork(networkId=netId)
+            for i in devices_aps:
+                lldp_info = getLldp(i['serial'])
+                bssid_info = getBssid(i['serial'])
+                for item in bssid_info:
+                    data = [network_info['name'], i['name'], lldp_info['systemName'], lldp_info['portId'], lldp_info['deviceId'], lldp_info['cdpPort'], item['ssidName'], item['band'], item['channel'], item['channelWidth'], item['bssid']]
+                    writer.writerow(data)
+            print(f'{netName} complete. Continuing...')
 print('Script finished.')
     
