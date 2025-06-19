@@ -26,5 +26,5 @@ Some scripts read or write CSV files. Example files and notes on usage will be r
 - NetworkWide_Device_Reboot.py - A CLI driven tool to reboot all devices of a selected type within a selected Org and Network. Reads a CSV for names/serial numbers of devices to skip.
 - OrgWide_Device_Reboot.py - Used to reboot all devices of a certain type across all organizations and networks available. Reads a CSV for names/serial numbers of devices to skip.
 - PoE_Utilization.py - Gathers current MS PoE usage and PSUs and writes summary info to CSV.
-- replace_radius_servers.py - Interactive CLI to push updated RADIUS server lists to SSIDs. Options for single network, all networks, CSV import of network list as well as targetting all SSIDs or match SSID by name.
+- replace_radius_servers.py - Interactive CLI to push updated RADIUS server lists to SSIDs. Options for single network, all networks, CSV import of network list as well as targeting all SSIDs or match SSID by name.
 - Schedule_Net_Upgrades.py - Schedules network upgrades based on CSV input file.
